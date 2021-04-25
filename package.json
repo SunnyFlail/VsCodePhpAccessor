@@ -1,0 +1,79 @@
+{
+  "name": "php-accessor-generator",
+	"displayName": "PHP Accessor Generator",
+	"description": "A simple accessor generator for php",
+	"version": "1.0.0",
+    "author": {
+        "name": "Patryk Ćwikliński",
+        "email": "sunny.flail@gmail.com"
+    },
+	"engines": {
+		"vscode": "^1.55.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+        "onCommand:php-accessor-generator.generateGetter",
+        "onCommand:php-accessor-generator.generateSetter",
+        "onCommand:php-accessor-generator.generate"
+	],
+	"main": "./dist/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "php-accessor-generator.generateGetter",
+                "category": "PhpAccessorGenerator",
+				"title": "Generate Getter"
+			},
+            {
+				"command": "php-accessor-generator.generateSetter",
+                "category": "PhpAccessorGenerator",
+				"title": "Generate Setter"
+			},
+            {
+				"command": "php-accessor-generator.generate",
+                "category": "PhpAccessorGenerator",
+				"title": "Generate Accessors"
+            }
+		],
+        "configuration": {
+            "title": "Php Accessor Generator",
+            "properties": {
+              "php-accessor-generator.propertyMisses": {
+                "type": "number",
+                "default": 3,
+                "description": "Number of lines to try to find next property."
+              }
+            }
+          }
+      
+	},
+	"scripts": {
+		"vscode:prepublish": "yarn run package",
+		"compile": "webpack",
+		"watch": "webpack --watch",
+		"package": "webpack --mode production --devtool hidden-source-map",
+		"test-compile": "tsc -p ./",
+		"test-watch": "tsc -watch -p ./",
+		"pretest": "yarn run test-compile && yarn run lint",
+		"lint": "eslint src --ext ts",
+		"test": "node ./out/test/runTest.js"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.55.0",
+		"@types/glob": "^7.1.3",
+		"@types/mocha": "^8.0.4",
+		"@types/node": "^12.11.7",
+		"eslint": "^7.19.0",
+		"@typescript-eslint/eslint-plugin": "^4.14.1",
+		"@typescript-eslint/parser": "^4.14.1",
+		"glob": "^7.1.6",
+		"mocha": "^8.2.1",
+		"typescript": "^4.1.3",
+		"vscode-test": "^1.5.0",
+		"ts-loader": "^8.0.14",
+		"webpack": "^5.19.0",
+		"webpack-cli": "^4.4.0"
+	}
+}
