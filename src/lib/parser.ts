@@ -1,16 +1,19 @@
 import {TextDocument, WorkspaceConfiguration} from "vscode";
 import AbstractClass from "./classmap";
 import {ConfigKeys, Regexes} from "./enums";
+import AccessorNameFactory from "./name";
 import Property from "./property";
 
 export default class Parser {
 	private config: WorkspaceConfiguration;
+	private nameFactory: AccessorNameFactory;
     private readonly REGEX_CLASS: RegExp;
     private readonly REGEX_PROPERTY: RegExp;
     private readonly REGEX_METHOD: RegExp;
 
-	public constructor(config: WorkspaceConfiguration) {
+	public constructor(config: WorkspaceConfiguration, nameFactory: AccessorNameFactory) {
 		this.config = config;
+		this.nameFactory = nameFactory;
         this.REGEX_CLASS = new RegExp(Regexes.className, 'i');
         this.REGEX_PROPERTY = new RegExp(Regexes.property, 'i');
         this.REGEX_METHOD = new RegExp(Regexes.method, 'i');
@@ -58,7 +61,7 @@ export default class Parser {
 			return undefined;
 		}
 
-		return new AbstractClass(className, properties, methods);
+		return new AbstractClass(className, properties, methods, this.nameFactory);
 	}
 
 	private lookForClassName(text: string): string | undefined {
@@ -93,5 +96,4 @@ export default class Parser {
 
 		return matches[1];
 	}
-
 }

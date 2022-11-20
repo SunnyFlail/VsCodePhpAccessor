@@ -1,10 +1,9 @@
-import { TextDocument, TextEditor, EndOfLine, Position, TextEditorEdit } from "vscode";
-import { Regexes } from "./enums";
+import { TextDocument, TextEditor, EndOfLine, Position, TextEditorEdit, TextLine } from "vscode";
+import { Regexes, ErrorLevel } from "./enums";
 import ListItem from "./listitem";
 
 export default class Writer
 {
-
     private editor: TextEditor;
     private document: TextDocument;
 
@@ -21,7 +20,7 @@ export default class Writer
         }
 
         const tabSize: number = Number(this.editor.options.tabSize);
-        const eol: string = EndOfLine[this.editor.document.eol] === "LF" ? "\n" : "\r\n";
+        const eol: string = EndOfLine[this.document.eol] === "LF" ? "\n" : "\r\n";
         const position: Position = this.findWriteablePosition();
 
         const code: string = items.map((item: ListItem) => item.accessor.generate(eol, tabSize)).join(eol + eol);
@@ -37,25 +36,17 @@ export default class Writer
 
     private findWriteablePosition(): Position
     {
-        const document: TextDocument = this.editor.document;
-        const eof: number = document.lineCount - 1;
-        let lastPropertyLine = -1;
-        
-        for (let currentLine = 0; currentLine < eof; currentLine ++) {
-            const text = document.lineAt(currentLine).text;
+        let currentLine: number = this.document.lineCount - 1;
 
-            if (RegExp(Regexes.property).test(text)) {
-                lastPropertyLine = currentLine;
+        while (currentLine > 1) {
+            currentLine --;
+            
+            if (this.document.lineAt(currentLine).text.lastIndexOf('}')) {
+                return this.document.lineAt(currentLine).range.end;
             }
         }
 
-        if (lastPropertyLine > 0) {
-            const lineEnd = document.lineAt(lastPropertyLine).text.length;
-            
-            return new Position(lastPropertyLine, lineEnd);
-        }
-
-        return new Position(eof - 1, 0);
+        throw new Error(`Couldn't find a class inside ${this.document.fileName}.`);
     }
 
 }

@@ -2,30 +2,51 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import Prompt from "./lib/prompt";
-import {AccessorType, ConfigKeys, Regexes} from "./lib/enums";
-import Parser from './lib/parser';
+import {AccessorType, CommandType, ConfigKeys} from "./lib/enums";
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-    const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration('php-accessor-generator');
+    try {
+        context.subscriptions.push (vscode.commands.registerCommand('php-accessor-generator.generateGetter', () => {
+            run(CommandType.Getter);
+        }));
+        context.subscriptions.push (vscode.commands.registerCommand('php-accessor-generator.generateSetter', () => {
+            run(CommandType.Setter);
+        }));
+        context.subscriptions.push (vscode.commands.registerCommand('php-accessor-generator.generate', () => {
+            run(CommandType.Both);
+        }));
+        context.subscriptions.push (vscode.commands.registerCommand('php-accessor-generator.generateClassBoilerplate', () => {
+            run(CommandType.ClassBoilerplate);
+        }));
+        context.subscriptions.push (vscode.commands.registerCommand('php-accessor-generator.generateInterfaceBoilerplate', () => {
+            run(CommandType.InterfaceBoilerplate);
+        }));
+        context.subscriptions.push (vscode.commands.registerCommand('php-accessor-generator.generateTraitBoilerplate', () => {
+            run(CommandType.TraitBoilerplate);
+        }));
 
-    for (const key in ConfigKeys) {
-        if (!config.has(key)) {
-            return vscode.window.showErrorMessage(`Configuration corrupted!\nKey ${key} not found!`);
-        }
+    } catch (error) {
+        vscode.window.showErrorMessage(getErrorMessage(error));
     }
 
-    const prompt = new Prompt(config);
+    function getErrorMessage(error: any): string
+    {
+        if (error instanceof Error) {
+            return error.message;
+        }
 
-	context.subscriptions.push (vscode.commands.registerCommand('php-accessor-generator.generateGetter', () => {
-        prompt.run(AccessorType.Getter);
-	}));
-	context.subscriptions.push (vscode.commands.registerCommand('php-accessor-generator.generateSetter', () => {
-        prompt.run(AccessorType.Setter);
-	}));
-	context.subscriptions.push (vscode.commands.registerCommand('php-accessor-generator.generate', () => {
-        prompt.run(AccessorType.Both);
-	}));
+        return String(error);
+    }
+
+    function run(type: CommandType)
+    {
+        try {
+            return (new Prompt(vscode.workspace.getConfiguration('php-accessor-generator'))).run(type);
+        } catch (error) {
+            vscode.window.showErrorMessage(getErrorMessage(error));
+        }
+    }
 }
 
 // this method is called when your extension is deactivated
