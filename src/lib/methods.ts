@@ -1,96 +1,80 @@
 import { AccessorType } from "./enums";
+import AccessorNameFactory from "./name";
 import Property from "./property";
 
 abstract class AbstractAccessor
 {
-
-    public readonly property: Property;
-    public readonly accessorType: AccessorType;
+    protected readonly property: Property;
+    protected readonly nameFactory: AccessorNameFactory;
+    protected readonly className: string;
 
     public constructor (
         property: Property,
-        accessorType: AccessorType
+        nameFactory: AccessorNameFactory,
+        className: string
     ){
         this.property = property;
-        this.accessorType = accessorType;
+        this.nameFactory = nameFactory;
+        this.className = className;
     }
 
-    public abstract getName(): string;
+    public getProperty(): Property
+    {
+        return this.property;
+    }
+
+    public getClassName(): string
+    {
+        return this.className;
+    }
 
     public getTypeName(): string
     {
-        return AccessorType[this.accessorType];
-    }
-
-    public abstract generate(eol: string, tabSize: number): string;
-
-}
-
-class Setter extends AbstractAccessor
-{
-
-    public constructor(property: Property)
-    {
-        super(property, AccessorType.Setter);
-    }
-
-    public getName(): string
-    {
-        const propName: string = this.property.name;
-
-        return `set${propName.charAt(0).toUpperCase()}${propName.slice(1)}`
+        return AccessorType[this.getRealAccessorType()];
     }
 
     public generate(eol: string, tabSize: number): string
     {
-        const methodName: string = this.getName();
-        const propTypes: Array<string> = this.property.types;
-        const types: string = propTypes.length > 0 ? propTypes.join("|") + " "  : "";
-        const propName: string = this.property.name;
-        const tabs: string = " ".repeat(tabSize); 
+        return this.nameFactory.generateAccessorMethod(this, eol, tabSize);
+    }
 
-        return [
-            `${tabs}public function ${methodName}(${types}$${propName})`,
-            `${tabs}{`,
-            `${tabs}${tabs}$this->${propName} = $${propName};`,
-            `${tabs}}`
-        ].join(eol);
+    public getName(): string
+    {
+        return this.nameFactory.generateMethodName(this);
+    }
+
+    public abstract getAccessorType(): AccessorType;
+
+    public abstract getRealAccessorType(): AccessorType;
+}
+
+class Setter extends AbstractAccessor
+{
+    public getAccessorType(): AccessorType
+    {
+        return AccessorType.setter;
+    }
+
+    public getRealAccessorType(): AccessorType
+    {
+        return this.getAccessorType();
     }
 } 
 
 class Getter extends AbstractAccessor
 {
-
-    public constructor(property: Property)
+    public getAccessorType(): AccessorType
     {
-        super(property, AccessorType.Getter);
+        return AccessorType.getter;
     }
 
-    public getName(): string
+    public getRealAccessorType(): AccessorType
     {
-        const propName: string = this.property.name;
-        let prefix: string = "get";
-        if (this.property.types.length === 1 && this.property.types[1] === "bool") {
-            prefix = "is";
+        if (this.property.types.length === 1 && this.property.types[0] === "bool") {
+            return AccessorType.isser;
         }
 
-        return `${prefix}${propName.charAt(0).toUpperCase()}${propName.slice(1)}`
-    }
-
-    public generate(eol: string, tabSize: number): string
-      {
-        const methodName: string = this.getName();
-        const propTypes: Array<string> = this.property.types;
-        const types: string = propTypes.length > 0 ? ": " + propTypes.join("|")  : "";
-        const propName: string = this.property.name;
-        const tabs: string = " ".repeat(tabSize); 
-
-        return [
-            `${tabs}public function ${methodName}()${types}`,
-            `${tabs}{`,
-            `${tabs}${tabs}return $this->${propName};`,
-            `${tabs}}`
-        ].join(eol);
+        return AccessorType.getter;
     }
 } 
 
