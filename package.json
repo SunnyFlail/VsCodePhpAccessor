@@ -2,11 +2,12 @@
 	"name": "php-accessor-generator",
 	"displayName": "PHP Accessor Generator",
 	"description": "A simple accessor generator for php",
-	"version": "1.0.0",
+	"version": "2.0.0",
 	"author": {
 		"name": "Patryk Ćwikliński",
 		"email": "sunny.flail@gmail.com"
 	},
+	"publisher": "sunnyflail",
 	"engines": {
 		"vscode": "^1.55.0"
 	},
