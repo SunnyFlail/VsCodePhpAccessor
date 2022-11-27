@@ -2,7 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import Prompt from "./lib/prompt";
-import {AccessorType, CommandType, ConfigKeys} from "./lib/enums";
+import { CommandType } from "./lib/enums";
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -25,6 +25,10 @@ export function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push (vscode.commands.registerCommand('php-accessor-generator.generateTraitBoilerplate', () => {
             run(CommandType.TraitBoilerplate);
         }));
+        context.subscriptions.push (vscode.commands.registerCommand('php-accessor-generator.generateConstructor', () => {
+            run(CommandType.Constructor);
+        }));
+
 
     } catch (error) {
         vscode.window.showErrorMessage(getErrorMessage(error));
@@ -39,10 +43,10 @@ export function activate(context: vscode.ExtensionContext) {
         return String(error);
     }
 
-    function run(type: CommandType)
+    async function run(type: CommandType)
     {
         try {
-            return (new Prompt(vscode.workspace.getConfiguration('php-accessor-generator'))).run(type);
+            await (new Prompt(vscode.workspace.getConfiguration('php-accessor-generator'))).run(type);
         } catch (error) {
             vscode.window.showErrorMessage(getErrorMessage(error));
         }

@@ -2,7 +2,7 @@
 	"name": "php-accessor-generator",
 	"displayName": "PHP Accessor Generator",
 	"description": "A simple accessor generator for php",
-	"version": "2.0.0",
+	"version": "2.1.0",
 	"author": {
 		"name": "Patryk Ćwikliński",
 		"email": "sunny.flail@gmail.com"
@@ -20,7 +20,8 @@
 		"onCommand:php-accessor-generator.generateTraitBoilerplate",
 		"onCommand:php-accessor-generator.generateGetter",
 		"onCommand:php-accessor-generator.generateSetter",
-		"onCommand:php-accessor-generator.generate"
+		"onCommand:php-accessor-generator.generate",
+		"onCommand:php-accessor-generator.generateConstructor"
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
@@ -54,6 +55,11 @@
 				"command": "php-accessor-generator.generateTraitBoilerplate",
 				"category": "PhpAccessorGenerator",
 				"title": "Generate Trait Boilerplate"
+			},
+			{
+				"command": "php-accessor-generator.generateConstructor",
+				"category": "PhpAccessorGenerator",
+				"title": "Generate constructor"
 			}
 		],
 		"configuration": {

@@ -19,9 +19,10 @@ export default class BoilerplateGenerator
         if (document.uri.scheme !== 'file') {
             throw new Error("File isn't located locally!");
         }
+
         const rootPath = workspace.rootPath;
         
-        if (typeof rootPath === 'undefined') {
+        if (rootPath === undefined) {
             throw new Error("Couldn't resolve project root path!");
         }
 

@@ -1,7 +1,7 @@
 import {QuickPickItem as IQuickPickItem} from "vscode";
-import { AbstractAccessor } from "./methods";
+import { AbstractAccessor } from "./accessor";
 
-export default class ListItem implements IQuickPickItem
+export default class ListItem <T> 
 {
     public label: string;
     public description?: string;
@@ -9,16 +9,15 @@ export default class ListItem implements IQuickPickItem
     public picked: boolean = true;
     public alwaysShow?: boolean;
 
-    public readonly accessor: AbstractAccessor;
+    public readonly context: T;
 
     public constructor(
         label: string,
         description: string,
-        accessor: AbstractAccessor
+        context: T
     ){
         this.label = label;
         this.description = description;
-        this.accessor = accessor;
+        this.context = context;
     }
-
 }

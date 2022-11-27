@@ -1,39 +1,40 @@
-enum CommandType {
+export enum CommandType {
     Getter = 3,
-    Setter = 5,
-    Both = 15,
+    Setter = 9,
+    Both = 27,
+    Constructor = 2,
     ClassBoilerplate = 7,
     InterfaceBoilerplate = 14,
     TraitBoilerplate = 49,
 }
 
-enum AccessorType {
+export enum AccessorType {
     getter = 3,
-    isser = 8,
-    setter = 5,
+    isser = 81,
+    setter = 9,
 };
 
-enum SetterStyle {
+export enum SetterStyle {
     classic = 0,
     chained = 1
 }
 
-enum ErrorLevel {
+export enum ErrorLevel {
     info = 0,
     error = 1
 }
 
-enum AccessModifiers {
+export enum AccessModifiers {
     public,
     private,
     protected
 };
 
-enum SupportedLanguages {
+export enum SupportedLanguages {
     php
 };
 
-enum ConfigKeys {
+export enum ConfigKeys {
     propertyMisses = "propertyMisses",
     setterPrefix = "setterPrefix",
     getterPrefix = "getterPrefix",
@@ -44,20 +45,16 @@ enum ConfigKeys {
     pathToComposerJson = 'pathToComposerJson',
 }
 
-enum Regexes {
-    className = 'class[ ]+(\\w+)',
+export enum Regexes {
+    className = '(class|interface|trait)[ ]+(\\w+)(?:[ ]+extends (\\w+))?',
     property = '(private|protected)((?:[ ]*[\\?]?[\\w]+)|(?:[ ]*[\\w]+[ ]*\\|?)*)[ ]*\\$([\\w-]+)[ ]*\\=?.*[;,]?',
-    propertyNew = '(private|protected)((?:[ ]*[\\?]?[\\w]+)|(?:[ ]*[\\w]+[ ]*\\|?)*)[ ]*\\$([\\w-]+)[ ]*\\=?.*[;,]?',
-    method = '(?:private|protected|public)?[ ]*function[ ]+([\\w]+)[ ]*[\\(]'
+    method = '(?:private|protected|public)?[ ]*function[ ]+([\\w]+)[ ]*[\\(]',
+    constructor = '__construct',
+    classRenameBase = '(\\w+)[ ]+as[ ]+',
 }
 
-export {
-    AccessorType,
-    AccessModifiers,
-    SupportedLanguages,
-    ConfigKeys,
-    Regexes,
-    ErrorLevel,
-    CommandType,
-    SetterStyle
-};
+export enum StructureTypes {
+    class = 'class',
+    interface = 'interface',
+    trait = 'trait',
+}

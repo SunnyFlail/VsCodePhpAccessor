@@ -5,16 +5,24 @@ import {
     WorkspaceConfiguration
 } from "vscode";
 import {
+    AccessorType,
     CommandType,
+    StructureTypes,
     SupportedLanguages
 } from "./enums";
 import Parser from "./parser";
 import ListItem from "./listitem";
 import ClassMap from "./classmap";
-import { AbstractAccessor } from "./methods";
 import Writer from "./writer";
-import AccessorNameFactory from "./name";
 import BoilerplateGenerator from "./generator";
+import { 
+    AccessorGenerationStrategy,
+    AccessorPositionStrategy,
+    ConstructorGenerationStrategy,
+    ConstructorPositionStrategy
+} from "./strategies/writer";
+import {Property, PropertyGenerator} from "./property";
+import { AbstractAccessor, AccessorGenerator, AccessorHelper } from "./accessor";
 
 export default class Prompt
 {
@@ -24,12 +32,12 @@ export default class Prompt
         this.config = config;
     }
 
-    public run(type: CommandType)
+    public async run(type: CommandType)
     {
         const editor: TextEditor|undefined = window.activeTextEditor;
 
         if (editor === undefined){
-            throw new Error("This extension may only work in an open text editor!");
+            throw new Error(`This extension may only work in an open text editor!`);
         }
         
         const document: TextDocument = editor.document;
@@ -40,55 +48,106 @@ export default class Prompt
         }
 
         if (document.isDirty) {
-            throw new Error(`Persist changes to current file before generating accessors!`);
+            throw new Error(`Persist changes to current file!`);
         }
 
-        const nameFactory = new AccessorNameFactory(this.config);
-        const classMap: ClassMap | undefined = (new Parser(this.config, nameFactory)).parseClass(document);
+        const propertyGenerator = new PropertyGenerator();
+        const accessorStringifier = new AccessorGenerator(this.config, propertyGenerator);
+        const classMap: ClassMap | undefined = (new Parser(this.config)).parseClass(document);
 
         if (type % 7 === 0) {
-            return this.generateBoilerplate(document, editor, classMap, type);
+            if (classMap !== undefined) {
+                throw new Error(`This file already contains a class!`);
+            }
+
+            return this.generateBoilerplate(document, editor, type);
         }
 
-        return this.generateAccessors(document, type, editor, nameFactory, classMap);
+        if (classMap === undefined) {
+            throw new Error(`This file doesn't contain a class!`);
+        }
+
+        if (classMap.type === StructureTypes.interface) {
+            throw new Error(`Interfaces dont't have properties!`);
+        }
+
+        if (type === CommandType.Constructor) {
+            await this.generateConstructor(classMap, document, editor, propertyGenerator);
+        }
+    
+        if (type % 3 === 0) {
+            await this.generateAccessors(document, type, editor, accessorStringifier, classMap);            
+        }
+    }
+
+    private async generateConstructor(
+        classMap: ClassMap,
+        document: TextDocument,
+        editor: TextEditor,
+        generator: PropertyGenerator
+    ) {
+        if (classMap.existingMethods.includes('__construct')) {
+            throw new Error(`File already contains a constructor!`);
+        }
+
+        const list: ListItem<Property>[] = classMap
+            .properties
+            .map((property: Property) => {
+                    const description = `Include ${property.name} in constructor`;
+
+                    return new ListItem<Property>(property.name, description, property);
+                }
+            )
+        ;
+
+        const items = await window.showQuickPick(list, {
+            canPickMany: true,
+            placeHolder: `Choose properties to include in generated contructor: `
+        });
+
+        (new Writer(
+            editor,
+            document,
+            new ConstructorGenerationStrategy(generator),
+            new ConstructorPositionStrategy()
+        )).save(items ?? []);
     }
 
     private generateBoilerplate(
         document: TextDocument,
         editor: TextEditor,
-        classMap: ClassMap | undefined,
         type: CommandType
     ) {
-        if (classMap !== undefined) {
-            throw new Error(`This file already contains a class!`);
-        }
-
         return (new BoilerplateGenerator(this.config)).generate(document, editor, type); 
     }
 
-    private generateAccessors(
+    private async generateAccessors(
         document: TextDocument,
         type: CommandType,
         editor: TextEditor,
-        nameFactory: AccessorNameFactory,
-        classMap: ClassMap | undefined
-    ) {        
-        if (classMap === undefined) {
-            throw new Error(`This file doesn't contain a class!`);
-        }
+        generator: AccessorGenerator,
+        classMap: ClassMap
+    ) {
+        const wantedTypes: Array<AccessorType> = ((type: CommandType) => {           
+            switch (type) {
+                case CommandType.Both:
+                    return [AccessorType.getter, AccessorType.isser, AccessorType.setter];
+                case CommandType.Getter:
+                    return [AccessorType.getter];
+                case CommandType.Setter:
+                    return [AccessorType.setter];
+                default:
+                    throw new Error(`This function only works with accessor generation!`);
+            }
+        })(type);
 
-        window.showInformationMessage(`Found class ${classMap.getName()}`);
-
-        const list: Array<ListItem> = classMap
-            .getUnavailableAccessors()
-            .filter((accessor: AbstractAccessor) => type % accessor.getAccessorType() === 0)
+        const list: ListItem<AbstractAccessor>[] = new AccessorHelper(generator)
+            .getUnavailableAccessors(classMap, wantedTypes)
             .map(
-                (accessor: AbstractAccessor) =>
-                {
+                (accessor: AbstractAccessor) => {
                     const accessorType: string = accessor.getTypeName();
-
-                    const label: string = `${nameFactory.generateMethodName(accessor)} - ${accessorType}`;
-                    const description: string = `Generate a ${accessorType} for property ${accessor.getProperty().name}`;
+                    const label: string = `${generator.generateMethodName(accessor)} - ${accessorType}`;
+                    const description: string = `Generate a ${accessorType} for property ${accessor.property.name}`;
 
                     return new ListItem(label, description, accessor);
                 }
@@ -96,26 +155,23 @@ export default class Prompt
         ;
 
         if (list.length <= 0) {
-            throw new Error("No properties without accessor found!");
+            throw new Error(`No properties without accessor found!`);
         }
 
-        window.showQuickPick(list, {
+        const items = await window.showQuickPick(list, {
             canPickMany: true,
-            placeHolder: "Choose accessors to generate: "
-        }).then(
-            (items) => {
-                if (items === undefined || items.length <= 0) {
-                    throw new Error("You didn't select any accessor!`");
-                }
+            placeHolder: `Choose accessors to generate: `
+        });
 
-                const writer = new Writer(editor, document);
+        if (items === undefined || items.length <= 0) {
+            throw new Error(`You didn't select any accessor!`);
+        }
 
-                if (!writer.save(items)) {
-                    window.showWarningMessage("You need to be on same file!");
-                }
-
-                return;
-            }
-        );
+        (new Writer(
+            editor,
+            document,
+            new AccessorGenerationStrategy(generator),
+            new AccessorPositionStrategy(document)
+        )).save(items);
     }
 }
