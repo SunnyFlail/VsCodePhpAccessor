@@ -1,10 +1,10 @@
 import { StructureTypes } from "./enums";
 import { AccessorGenerator } from "./accessor";
 import {Property} from "./property";
-
-class ClassMap
+export default class ClassMap
 {
     public readonly name: string;
+    public readonly namespace: string | null;
     public readonly properties: Array<Property>;
     public readonly existingMethods: Array<string>;
     public readonly type: StructureTypes;
@@ -13,13 +13,13 @@ class ClassMap
         name: string,
         properties: Array<Property>,
         existingMethods: Array<string>,
-        structureType: StructureTypes
+        structureType: StructureTypes,
+        namespace: string | null
     ) {
         this.name = name;
         this.properties = properties;
         this.existingMethods = existingMethods;
         this.type = structureType;
+        this.namespace = namespace;
     }
 }
-
-export default ClassMap;

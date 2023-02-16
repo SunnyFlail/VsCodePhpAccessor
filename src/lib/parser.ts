@@ -13,18 +13,19 @@ export default class Parser {
     private readonly REGEX_CLASS: RegExp;
     private readonly REGEX_PROPERTY: RegExp;
     private readonly REGEX_METHOD: RegExp;
-    private readonly REGEX_CONSTRUCTOR: RegExp;
+    private readonly REGEX_NAMESPACE: RegExp;
 
 	public constructor(config: WorkspaceConfiguration) {
 		this.config = config;
         this.REGEX_CLASS = new RegExp(Regexes.className, 'i');
         this.REGEX_PROPERTY = new RegExp(Regexes.property, 'i');
         this.REGEX_METHOD = new RegExp(Regexes.method, 'i');
-        this.REGEX_CONSTRUCTOR = new RegExp(Regexes.constructor, 'i');
+        this.REGEX_NAMESPACE = new RegExp(Regexes.namespace, 'i');
 	}
 
-	public parseClass(document: TextDocument): AbstractClass | undefined {
+	public parseClass(document: TextDocument, onlyClass: boolean = false): AbstractClass | undefined {
 		const maxLine = document.lineCount - 1;
+		let namespace: string|null = null;
 		const properties: Array<Property> = [];
 		const methods: Array<string> = [];
 		const maxPropertyMisses: number = Number(
@@ -39,12 +40,20 @@ export default class Parser {
 			const text: string = document.lineAt(currentLine).text;
 
 			if (className === undefined) {
+				if (!namespace) {
+					namespace = this.lookForNamespace(text);
+				}
+
 				const { name, type } = this.lookForClassName(text);
 
 				className = name ?? className;
 				classType = type ?? classType;
 
 				continue;
+			}
+
+			if (onlyClass) {
+				break;
 			}
 
 			if (propertyMisses < maxPropertyMisses && classType !== StructureTypes.interface) {
@@ -72,28 +81,17 @@ export default class Parser {
 			return undefined;
 		}
 
-		return new AbstractClass(className, properties, methods, classType);
+		return new AbstractClass(className, properties, methods, classType, namespace);
 	}
 
-	private lookForImportRenaming(className: string, document: TextDocument): string
-	{
-		const maxLine = document.lineCount - 1;
-		const regex = new RegExp(Regexes.classRenameBase + className, 'i');
+	private lookForNamespace(text: string): string|null {
+		const matches = text.match(this.REGEX_NAMESPACE);
 
-		for (let currentLine: number = 0; currentLine < maxLine; currentLine++) {
-			const line = document.lineAt(currentLine);
-			const matches = line.text.match(regex); 
-			
-			if (matches) {
-				return matches[1];
-			}
-
-			if (this.lookForClassName(line.text).name !== undefined) {
-				break;
-			}
+		if (!matches) {
+			return null;
 		}
 
-		return className;
+		return matches[1] ?? null;
 	}
 
 	private lookForClassName(text: string): ClassNameTuple {

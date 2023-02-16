@@ -13,5 +13,9 @@
 	"exclude": [
 		"node_modules",
 		".vscode-test"
+	],
+	"include": [
+		"php_plugin",
+		"src"
 	]
 }

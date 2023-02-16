@@ -6,6 +6,7 @@ export enum CommandType {
     ClassBoilerplate = 7,
     InterfaceBoilerplate = 14,
     TraitBoilerplate = 49,
+    NewGetter = 2137,
 }
 
 export enum AccessorType {
@@ -43,10 +44,12 @@ export enum ConfigKeys {
     removeUnderscores = "removeUnderscores",
     uppercaseAfterUnderscores = "uppercaseAfterUnderscores",
     pathToComposerJson = 'pathToComposerJson',
+    useStaticReturn = 'useStaticReturn',
 }
 
 export enum Regexes {
     className = '(class|interface|trait)[ ]+(\\w+)(?:[ ]+extends (\\w+))?',
+    namespace = 'namespace[ ]+(\\w[\\w\\\\]+\\w);',
     property = '(private|protected)((?:[ ]*[\\?]?[\\w]+)|(?:[ ]*[\\w]+[ ]*\\|?)*)[ ]*\\$([\\w-]+)[ ]*\\=?.*[;,]?',
     method = '(?:private|protected|public)?[ ]*function[ ]+([\\w]+)[ ]*[\\(]',
     constructor = '__construct',

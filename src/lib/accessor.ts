@@ -8,7 +8,7 @@ export abstract class AbstractAccessor
     public readonly property: Property;
     public readonly className: string;
 
-    public constructor (property: Property,className: string) {
+    public constructor (property: Property, className: string) {
         this.property = property;
         this.className = className;
     }

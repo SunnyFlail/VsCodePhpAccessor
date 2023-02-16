@@ -1,8 +1,7 @@
 import { TextDocument, TextEditor, EndOfLine, Position, TextEditorEdit } from "vscode";
-import ListItem from "./listitem";
 import { IWriterGenerationStrategy, IWriterPositionStrategy } from "./strategies/writer";
 
-export default class Writer
+export default class Writer<T>
 {
     private editor: TextEditor;
     private document: TextDocument;
@@ -21,7 +20,7 @@ export default class Writer
         this.positionFinder = positionFinder;
     }
 
-    public save(items: ListItem<any>[]): void {
+    public save(items: Array<T>): void {
         if (this.editor.document !== this.document) {
             throw new Error(`You need to be on same file!`);
         }

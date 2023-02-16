@@ -1,5 +1,7 @@
 import { ConfigurationTarget, TextDocument, TextEditor, WorkspaceConfiguration, workspace, window, Position, EndOfLine, TextEditorEdit, commands} from "vscode";
+import ExtensionSettings from "./client/settings";
 import { CommandType, ConfigKeys } from "./enums";
+import { Search } from "./search";
 
 type NamespaceDictionary = {
     [key: string]: string;
@@ -7,11 +9,12 @@ type NamespaceDictionary = {
 
 export default class BoilerplateGenerator
 {
-    private config: WorkspaceConfiguration;
+    private search: Search;
+    private settings: ExtensionSettings;
 
-    public constructor(config: WorkspaceConfiguration)
-    {
-        this.config = config;
+    public constructor(search: Search, settings: ExtensionSettings) {
+        this.search = search;
+        this.settings = settings;
     }
 
     public async generate(document: TextDocument, editor: TextEditor, type: CommandType)
@@ -28,7 +31,7 @@ export default class BoilerplateGenerator
 
         const fileName = getFileName(document);
         const localPath: string = document.fileName.replace(rootPath, '');
-        const composerPath = await this.getComposerPath();
+        const composerPath = await this.search.getComposerPath();
         const localComposerPath = composerPath.replace(rootPath, '');
         const composerDirFromRoot = getFileDirectoryFromRoot(localComposerPath, 'composer.json');
         const fileDirFromComposer = getFileDirectoryFromRoot(localPath, fileName).replace(composerDirFromRoot, '');
@@ -37,8 +40,7 @@ export default class BoilerplateGenerator
         const className = fileName.split('.')[0];
 
         const tabSize: number = Number(editor.options.tabSize);
-        const eol: string = EndOfLine[document.eol] === "LF" ? "\n" : "\r\n";
-        const boilerPlate = this.getBoilerPlate(namespace, className, eol, tabSize, type);
+        const boilerPlate = this.getBoilerPlate(namespace, className, type);
 
         editor.edit(
             (edit: TextEditorEdit) => {
@@ -130,30 +132,10 @@ export default class BoilerplateGenerator
         }
     }
 
-    private async getComposerPath(): Promise<string>
+    private getBoilerPlate(namespace: string, className: string, type: CommandType): string
     {
-        let pathToComposerJson: string | undefined = this.config.get(ConfigKeys.pathToComposerJson);
-
-        if ((typeof pathToComposerJson !== 'undefined') && String(pathToComposerJson).length > 0) {
-            return String(pathToComposerJson);
-        }
-
-        const files = await workspace.findFiles('*/composer.json');
-
-        if (!Array.isArray(files) || files.length < 1) {
-            throw new Error("Couldn't find composer.json");
-        }
-
-        pathToComposerJson = String(files[0].path);
-
-        this.config.update(ConfigKeys.pathToComposerJson, pathToComposerJson, ConfigurationTarget.WorkspaceFolder);
-
-        return pathToComposerJson;
-    }
-
-    private getBoilerPlate(namespace: string, className: string, eol: string, tabSize: number, type: CommandType): string
-    {
-        const tab = ` `.repeat(tabSize);
+        const tab = this.settings.tab;
+        const eol = this.settings.eol;
 
         const typeName = getType(type);
 

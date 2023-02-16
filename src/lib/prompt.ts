@@ -2,7 +2,9 @@ import {
     window,
     TextEditor, 
     TextDocument,
-    WorkspaceConfiguration
+    WorkspaceConfiguration,
+    ExtensionContext,
+    EndOfLine
 } from "vscode";
 import {
     AccessorType,
@@ -17,19 +19,31 @@ import Writer from "./writer";
 import BoilerplateGenerator from "./generator";
 import { 
     AccessorGenerationStrategy,
-    AccessorPositionStrategy,
+    MethodPositionStrategy,
     ConstructorGenerationStrategy,
-    ConstructorPositionStrategy
+    ConstructorPositionStrategy,
+    MethodGenerationStrategy
 } from "./strategies/writer";
 import {Property, PropertyGenerator} from "./property";
 import { AbstractAccessor, AccessorGenerator, AccessorHelper } from "./accessor";
-
+import { Search } from "./search";
+import { PhpClient } from "./client/client";
+import { ClassParser } from "./client/generator";
+import { AbstractFunctionGenerator } from "./client/implementer";
+import { ClassDto, FunctionDto } from "./client/dtos";
+import { DataTypesStringifier, ExtendedFunctionDto, FunctionStringifier, ModifierSorter, ParamStringifier } from "./client/fngen";
+import ExtensionSettings from "./client/settings";
+import { ScriptEndingMessage } from "./error";
 export default class Prompt
 {
     private config: WorkspaceConfiguration;
+    private extension: ExtensionContext;
+    private phpConfig: WorkspaceConfiguration;
 
-    public constructor(config: WorkspaceConfiguration) {
+    public constructor(config: WorkspaceConfiguration, extension: ExtensionContext, phpConfig: WorkspaceConfiguration) {
         this.config = config;
+        this.extension = extension;
+        this.phpConfig = phpConfig;
     }
 
     public async run(type: CommandType)
@@ -39,7 +53,8 @@ export default class Prompt
         if (editor === undefined){
             throw new Error(`This extension may only work in an open text editor!`);
         }
-        
+
+
         const document: TextDocument = editor.document;
         const language: string = document.languageId;
 
@@ -53,14 +68,27 @@ export default class Prompt
 
         const propertyGenerator = new PropertyGenerator();
         const accessorStringifier = new AccessorGenerator(this.config, propertyGenerator);
-        const classMap: ClassMap | undefined = (new Parser(this.config)).parseClass(document);
+        const classMap: ClassMap | undefined = (new Parser(this.config))
+            .parseClass(
+                document,
+                [
+                    CommandType.NewGetter,
+                ].includes(type)
+            )
+        ;
+
+        const settings = new ExtensionSettings(
+            this.config,
+            editor,
+            EndOfLine[document.eol] === "LF" ? "\n" : "\r\n"
+        );
 
         if (type % 7 === 0) {
             if (classMap !== undefined) {
                 throw new Error(`This file already contains a class!`);
             }
 
-            return this.generateBoilerplate(document, editor, type);
+            return this.generateBoilerplate(document, editor, type, settings);
         }
 
         if (classMap === undefined) {
@@ -68,7 +96,11 @@ export default class Prompt
         }
 
         if (classMap.type === StructureTypes.interface) {
-            throw new Error(`Interfaces dont't have properties!`);
+            throw new ScriptEndingMessage(`Interfaces dont't have properties!`);
+        }
+
+        if (type === CommandType.NewGetter) {
+            await this.implementAbstractFunctions(classMap, editor, document, settings);
         }
 
         if (type === CommandType.Constructor) {
@@ -78,6 +110,75 @@ export default class Prompt
         if (type % 3 === 0) {
             await this.generateAccessors(document, type, editor, accessorStringifier, classMap);            
         }
+    }
+
+    private async implementAbstractFunctions(
+        classMap: ClassMap,
+        editor: TextEditor,
+        document: TextDocument,
+        settings: ExtensionSettings
+    ) {
+        const classData = await this.fetchFunctionData(classMap);
+        console.log(classData);
+        const dataTypesStringifier = new DataTypesStringifier();
+        const paramStringifier = new ParamStringifier(dataTypesStringifier);
+        const funcStringifier = new FunctionStringifier(
+            settings,
+            dataTypesStringifier,
+            paramStringifier,
+            new ModifierSorter()
+        );
+
+        const gen = new ClassParser();
+        const list: ListItem<FunctionDto>[] = gen.getNotImplementedAbstractFunctions(classData)
+            .map(fn => {
+                const label = fn.name;
+                const description = `Implement ${funcStringifier.getFunctionDefinition(fn)} from ${fn.owner}`;
+
+                return new ListItem<FunctionDto>(label, description, fn);
+            }
+        );
+
+        if (!list.length) {
+            throw new ScriptEndingMessage(`No not implemented methods found!`);
+        }
+
+        const choosen = await window.showQuickPick(list, {
+            canPickMany: true,
+            placeHolder: `Choose abstract methods to implement: `
+        });
+
+        if (!choosen) {
+            throw new ScriptEndingMessage(`You didn't pick any method to implement!`);
+        }
+
+        const generator = new AbstractFunctionGenerator();
+
+        (new Writer<ExtendedFunctionDto>(
+            editor,
+            document,
+            new MethodGenerationStrategy(funcStringifier),
+            new MethodPositionStrategy(document)
+        )).save(choosen.map(item => generator.generateFunction(item.context)));
+    }
+
+    private async fetchFunctionData(classMap: ClassMap): Promise<ClassDto> {
+        const composerPath: string = await (new Search(this.config)).getComposerPath();
+        const client = new PhpClient();
+        const className = (classMap.namespace ? `\\${classMap.namespace}` : '' ) + '\\' + classMap.name;  
+
+        const response = client.fetch(
+            this.extension.extensionPath,
+            composerPath,
+            className,
+            this.phpConfig.get('executablePath') ?? ''
+        );
+            
+        if (!response.success) {
+            throw new Error(response.message);
+        }
+        
+        return response.class;
     }
 
     private async generateConstructor(
@@ -105,20 +206,30 @@ export default class Prompt
             placeHolder: `Choose properties to include in generated contructor: `
         });
 
-        (new Writer(
+        if (!items) {
+            return;
+        }
+
+        (new Writer<Property>(
             editor,
             document,
             new ConstructorGenerationStrategy(generator),
             new ConstructorPositionStrategy()
-        )).save(items ?? []);
+        )).save(items.map(item => item.context));
     }
 
     private generateBoilerplate(
         document: TextDocument,
         editor: TextEditor,
-        type: CommandType
+        type: CommandType,
+        settings: ExtensionSettings
     ) {
-        return (new BoilerplateGenerator(this.config)).generate(document, editor, type); 
+        return (
+            new BoilerplateGenerator(
+                new Search(this.config),
+                settings
+            )
+        ).generate(document, editor, type); 
     }
 
     private async generateAccessors(
@@ -167,11 +278,11 @@ export default class Prompt
             throw new Error(`You didn't select any accessor!`);
         }
 
-        (new Writer(
+        (new Writer<AbstractAccessor>(
             editor,
             document,
             new AccessorGenerationStrategy(generator),
-            new AccessorPositionStrategy(document)
-        )).save(items);
+            new MethodPositionStrategy(document)
+        )).save(items.map(item => item.context));
     }
 }

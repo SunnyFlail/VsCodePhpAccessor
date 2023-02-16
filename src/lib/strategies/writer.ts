@@ -1,14 +1,15 @@
 import { Position, TextDocument } from "vscode";
 import { AbstractAccessor, AccessorGenerator } from "../accessor";
+import { ExtendedFunctionDto, FunctionStringifier } from "../client/fngen";
 import ListItem from "../listitem";
 import { Property, PropertyGenerator } from "../property";
 
 export interface IWriterGenerationStrategy {
-    generate(items: ListItem<any>[], tabSize: number, eol: string): string,
+    generate(items: Array<any>, tabSize: number, eol: string): string,
 }
 
 export interface IWriterPositionStrategy {
-    findWriteablePosition(items: ListItem<any>[]): Position | undefined;
+    findWriteablePosition(items: Array<any>): Position | undefined;
 }
 
 export class AccessorGenerationStrategy implements IWriterGenerationStrategy {
@@ -18,12 +19,24 @@ export class AccessorGenerationStrategy implements IWriterGenerationStrategy {
         this.generator = generator;
     }
 
-    generate(items: ListItem<AbstractAccessor>[], tabSize: number, eol: string): string {
-        return items.map((item: ListItem<AbstractAccessor>) => this.generator.generateAccessorMethod(item.context, eol, tabSize)).join(eol + eol);
+    generate(items: Array<AbstractAccessor>, tabSize: number, eol: string): string {
+        return items.map((item: AbstractAccessor) => this.generator.generateAccessorMethod(item, eol, tabSize)).join(eol + eol);
     }
 };
 
-export class AccessorPositionStrategy implements IWriterPositionStrategy  {
+export class MethodGenerationStrategy implements IWriterGenerationStrategy {
+    private stringifier: FunctionStringifier;
+    
+    constructor(stringifier: FunctionStringifier) {
+        this.stringifier = stringifier;
+    }
+    
+    generate(items: Array<ExtendedFunctionDto>, tabSize: number, eol: string): string {
+        return items.map(item => this.stringifier.stringify(item)).join(eol + eol);
+    }
+}
+
+export class MethodPositionStrategy implements IWriterPositionStrategy  {
 
     private document: TextDocument;
 
@@ -31,9 +44,8 @@ export class AccessorPositionStrategy implements IWriterPositionStrategy  {
         this.document = document;
     }
 
-    findWriteablePosition(items: ListItem<AbstractAccessor>[]): Position | undefined  {
+    findWriteablePosition(items: Array<any>): Position | undefined  {
         let currentLine: number = this.document.lineCount - 1;
-        const maxLine: number = this.document.lineCount - 1;
 
         while (currentLine > 1) {
             currentLine --;
@@ -73,8 +85,8 @@ export class ConstructorGenerationStrategy implements IWriterGenerationStrategy 
 }
 
 export class ConstructorPositionStrategy implements IWriterPositionStrategy {
-    findWriteablePosition(items: ListItem<Property>[]): Position | undefined {
-        const line = items[items.length - 1]?.context.line;
+    findWriteablePosition(items: Array<Property>): Position | undefined {
+        const line = items[items.length - 1]?.line;
         
         if (!line) {
             return undefined;
