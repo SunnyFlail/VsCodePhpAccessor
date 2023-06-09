@@ -1,7 +1,8 @@
-import { Position, TextDocument } from "vscode";
+import { Position, TextDocument, WorkspaceConfiguration } from "vscode";
 import { AbstractAccessor, AccessorGenerator } from "../accessor";
 import ListItem from "../listitem";
 import { Property, PropertyGenerator } from "../property";
+import { ConfigKeys } from "../enums";
 
 export interface IWriterGenerationStrategy {
     generate(items: ListItem<any>[], tabSize: number, eol: string): string,
@@ -50,25 +51,71 @@ export class AccessorPositionStrategy implements IWriterPositionStrategy  {
 
 export class ConstructorGenerationStrategy implements IWriterGenerationStrategy {
     private generator: PropertyGenerator;
+    private config: WorkspaceConfiguration;
 
-    constructor(generator: PropertyGenerator) {
+    constructor(generator: PropertyGenerator, config: WorkspaceConfiguration) {
         this.generator = generator;
+        this.config = config;
     }
     
     generate(items: ListItem<Property>[], tabSize: number, eol: string): string {
         const lines: Array<string> = [];
         const tabs = " ".repeat(tabSize);
-        const properties = items.map(
-            (item: ListItem<Property>): string => this.generator.generateArgumentString(item.context)
-        ).join(',' + ' ');
 
-        lines.push(`${tabs}public function __construct(${properties})`, `${tabs}{`);
+        lines.push(this.generateMethodDefinition(items, tabs, eol));
         const sets = items.map(
             (item: ListItem<Property>): string => tabs + tabs + this.generator.generateAssociationString(item.context)
         );
         lines.push(...sets, `${tabs}}`, '');
 
         return lines.join(eol);
+    }
+
+    private generateMethodDefinition(
+        items: ListItem<Property>[],
+        tabs: string,
+        eol: string
+    ): string
+    {
+        const definition = this.generateSingleLineDefinition(items, tabs, eol);
+
+        if (
+            !this.config.get(ConfigKeys.multilineConstructorArguments)
+            || definition.length < parseInt(
+                this.config.get(ConfigKeys.multilineConstructorArgumentsLength)
+                ?? '0'
+            )
+        ) {
+            return definition;
+        }
+
+        return this.generateMultilineDefinition(items, tabs, eol); 
+    } 
+
+    private generateSingleLineDefinition(     
+        items: ListItem<Property>[],
+        tabs: string,
+        eol: string
+    ): string
+    {
+        const properties = items.map(
+            (item: ListItem<Property>): string => this.generator.generateArgumentString(item.context)
+        ).join(',' + ' ');
+
+        return `${tabs}public function __construct(${properties})${eol}${tabs}{`;
+    }
+
+    private generateMultilineDefinition(
+        items: ListItem<Property>[],
+        tabs: string,
+        eol: string
+    ): string
+    {
+        const properties = items.map(
+            (item: ListItem<Property>): string => tabs + tabs +this.generator.generateArgumentString(item.context)
+        ).join(',' + ' ' + eol);
+
+        return `${tabs}public function __construct(${eol}${properties}${eol}${tabs}) {`;
     }
 }
 

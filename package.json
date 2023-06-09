@@ -99,6 +99,16 @@
 					"type": "boolean",
 					"default": 1,
 					"description": "Should it remove _ from property name in accessor"
+				},
+				"php-accessor-generator.multilineConstructorArguments": {
+					"type": "boolean",
+					"default": 1,
+					"description": "Should constructor arguments be each in a separate line if the length exceeds configuration"
+				},
+				"php-accessor-generator.multilineConstructorArgumentsLength": {
+					"type": "boolean",
+					"default": 80,
+					"description": "Max length of a line"
 				}
 			}
 		}

@@ -108,7 +108,7 @@ export default class Prompt
         (new Writer(
             editor,
             document,
-            new ConstructorGenerationStrategy(generator),
+            new ConstructorGenerationStrategy(generator, this.config),
             new ConstructorPositionStrategy()
         )).save(items ?? []);
     }

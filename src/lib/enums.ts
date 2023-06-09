@@ -43,6 +43,8 @@ export enum ConfigKeys {
     removeUnderscores = "removeUnderscores",
     uppercaseAfterUnderscores = "uppercaseAfterUnderscores",
     pathToComposerJson = 'pathToComposerJson',
+    multilineConstructorArguments = 'multilineConstructorArguments',
+    multilineConstructorArgumentsLength = 'multilineConstructorArgumentsLength',
 }
 
 export enum Regexes {

@@ -146,7 +146,11 @@ export default class BoilerplateGenerator
 
         pathToComposerJson = String(files[0].path);
 
-        this.config.update(ConfigKeys.pathToComposerJson, pathToComposerJson, ConfigurationTarget.WorkspaceFolder);
+        this.config.update(
+            ConfigKeys.pathToComposerJson,
+            pathToComposerJson,
+            ConfigurationTarget.Workspace
+        );
 
         return pathToComposerJson;
     }
